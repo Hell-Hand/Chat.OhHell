@@ -1,8 +1,125 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
-}
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SignalR Chat Room</title>
+    <style>
+            body {
+                font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+                max-width: 800px;
+                margin: 40px auto;
+            }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+            .row {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 12px;
+            }
+
+            input {
+                flex: 1;
+                padding: 8px;
+            }
+
+            button {
+                padding: 8px 12px;
+            }
+
+            ul {
+                list-style: none;
+                padding: 0;
+            }
+
+            li {
+                padding: 6px 8px;
+                border-bottom: 1px solid #eee;
+            }
+
+            .me {
+                font-weight: 600;
+            }
+    </style>
+    <!-- SignalR browser client (CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+</head>
+<body>
+    <h1>💬 SignalR Chat Room</h1>
+
+    <div class="row">
+        <input id="userInput" placeholder="Your name" />
+        <button id="saveUser">Set Name</button>
+    </div>
+    <div class="row">
+        <input id="messageInput" placeholder="Type a message and press Enter…" />
+        <button id="sendButton">Send</button>
+    </div>
+
+    <ul id="messagesList"></ul>
+
+    <script>
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/chathub")
+                .withAutomaticReconnect()
+                .build();
+
+            const userInput = document.getElementById("userInput");
+            const messageInput = document.getElementById("messageInput");
+            const messagesList = document.getElementById("messagesList");
+            const sendButton = document.getElementById("sendButton");
+            const saveUser = document.getElementById("saveUser");
+
+            let userName = localStorage.getItem("chat_user") || "";
+
+            if (userName) userInput.value = userName;
+
+            saveUser.addEventListener("click", () => {
+                userName = userInput.value.trim() || "Anonymous";
+                localStorage.setItem("chat_user", userName);
+                userInput.blur();
+            });
+
+            function appendMessage(user, message) {
+                const li = document.createElement("li");
+                const isMe = user === userName;
+                li.innerHTML = `<span class="${isMe ? "me" : ""}">${user}:</span> ${message}`;
+                messagesList.appendChild(li);
+                li.scrollIntoView({ behavior: "smooth", block: "end" });
+            }
+
+            connection.on("ReceiveMessage", (user, message) => {
+                appendMessage(user, message);
+            });
+
+            async function start() {
+                try {
+                    await connection.start();
+                    console.log("connected");
+                } catch (err) {
+                    console.error(err);
+                    setTimeout(start, 2000);
+                }
+            }
+
+            start();
+
+            async function send() {
+                const msg = messageInput.value.trim();
+                const user = (userInput.value || "Anonymous").trim();
+                if (!msg) return;
+                try {
+                    await connection.invoke("SendMessage", user, msg);
+                    messageInput.value = "";
+                    messageInput.focus();
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+
+            sendButton.addEventListener("click", send);
+            messageInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") send();
+            });
+    </script>
+</body>
+</html>
