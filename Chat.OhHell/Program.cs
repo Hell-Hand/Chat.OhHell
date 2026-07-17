@@ -11,7 +11,8 @@ builder.Services.AddCors(options =>
         policy
             .WithOrigins(
                 "http://localhost:5173",
-                "http://127.0.0.1:4173"
+                "http://127.0.0.1:4173",
+                "https://fodinha.loty.click"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
@@ -33,6 +34,7 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 
+app.UseCors("Frontend");
 app.UseAuthorization();
 
 app.MapStaticAssets();
@@ -42,6 +44,5 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
 
-app.UseCors("Frontend");
 app.MapHub<ChatHub>("/chatHub");
 app.Run();
